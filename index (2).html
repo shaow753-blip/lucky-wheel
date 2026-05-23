@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FGL集团 · 幸运大转盘</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --gold:#c9a227;--gold-lt:#f0d060;--gold-dk:#8b6914;
+  --bg0:#060210;--bg1:#16082e;--bg2:#0b1840;
+  --ivory:#f0e0c0;--obsidian:#12101e;--purple:#2a1850;
+  --txt:#f0e6ff;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse 60% 55% at 20% 15%,#2a0a5e55,transparent),
+    radial-gradient(ellipse 50% 45% at 80% 85%,#0d1f5e55,transparent),
+    linear-gradient(155deg,var(--bg0) 0%,var(--bg1) 45%,var(--bg2) 75%,var(--bg0) 100%);
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;padding:28px 16px 44px;
+  font-family:"PingFang SC","Microsoft YaHei","微软雅黑","Noto Sans SC",sans-serif;
+  overflow-x:hidden;position:relative;
+}
+
+/* star-field overlay */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%,#ffffff55,transparent),
+    radial-gradient(1px   1px   at 38% 8% ,#ffffff44,transparent),
+    radial-gradient(1px   1px   at 72% 28%,#ffffff50,transparent),
+    radial-gradient(2px   2px   at 55% 55%,#c9a22740,transparent),
+    radial-gradient(1px   1px   at 88% 65%,#ffffff38,transparent),
+    radial-gradient(1.5px 1.5px at 22% 78%,#ffffff45,transparent),
+    radial-gradient(1px   1px   at 65% 88%,#c9a22730,transparent),
+    radial-gradient(1px   1px   at 5%  50%,#ffffff40,transparent),
+    radial-gradient(1.5px 1.5px at 92% 35%,#ffffff35,transparent),
+    radial-gradient(1px   1px   at 48% 92%,#ffffff30,transparent);
+}
+
+/* ═══════════════════ HEADER ═══════════════════ */
+.page-wrap{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%}
+
+.header{text-align:center;margin-bottom:28px;user-select:none}
+
+.title-main{
+  font-size:clamp(2.4rem,7vw,3.8rem);font-weight:900;
+  letter-spacing:.38em;
+  background:linear-gradient(135deg,#fde97a 0%,#c9a227 25%,#f0d060 55%,#a07010 80%,#fde97a 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 22px rgba(201,162,39,.6));
+  animation:titleShimmer 6s linear infinite;
+  background-size:200% 100%;
+}
+@keyframes titleShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+
+.title-bar{
+  width:clamp(130px,32vw,240px);height:2px;margin:11px auto 9px;
+  background:linear-gradient(90deg,transparent,#c9a227cc,transparent);
+}
+
+.title-sub{
+  font-size:clamp(.68rem,1.8vw,.88rem);letter-spacing:.52em;
+  color:rgba(240,220,255,.38);
+}
+
+/* ═══════════════════ WHEEL SECTION ═══════════════════ */
+.wheel-section{position:relative;display:flex;flex-direction:column;align-items:center}
+
+.outer-glow-ring{
+  position:absolute;top:50%;left:50%;
+  width:538px;height:538px;border-radius:50%;
+  border:1.5px solid rgba(201,162,39,.22);
+  box-shadow:0 0 45px rgba(201,162,39,.18),0 0 90px rgba(201,162,39,.07);
+  transform:translate(-50%,-50%);pointer-events:none;
+  animation:ringPulse 4s ease-in-out infinite;
+}
+@keyframes ringPulse{
+  0%,100%{opacity:.5;box-shadow:0 0 35px rgba(201,162,39,.15)}
+  50%    {opacity:1;box-shadow:0 0 60px rgba(201,162,39,.38),0 0 100px rgba(201,162,39,.1)}
+}
+
+.wheel-container{position:relative;width:500px;height:500px}
+
+/* — pointer — */
+.ptr-wrap{
+  position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+  z-index:20;display:flex;flex-direction:column;align-items:center;
+  filter:drop-shadow(0 6px 12px rgba(201,162,39,.95));
+}
+.ptr-triangle{
+  width:0;height:0;
+  border-left:16px solid transparent;
+  border-right:16px solid transparent;
+  border-top:58px solid #f0d060;
+  position:relative;
+}
+.ptr-triangle::after{
+  content:'';position:absolute;top:-57px;left:-11px;
+  width:0;height:0;
+  border-left:11px solid transparent;
+  border-right:11px solid transparent;
+  border-top:46px solid #c9a227;
+}
+.ptr-base{
+  width:24px;height:10px;border-radius:4px;margin-top:-3px;
+  background:linear-gradient(135deg,#f0d060,#8b6914);
+}
+
+/* — canvas — */
+#wheelCanvas{
+  display:block;border-radius:50%;
+  box-shadow:0 0 0 4px rgba(201,162,39,.45),0 10px 50px rgba(0,0,0,.7);
+}
+
+/* — center button — */
+.btn-wrap{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);z-index:15;
+}
+
+#spinBtn{
+  width:88px;height:88px;border-radius:50%;
+  border:3px solid var(--gold);
+  background:radial-gradient(circle at 35% 30%,#3d2a6e,#1c0c3a,#08020e);
+  color:var(--gold-lt);font-size:13px;font-weight:700;
+  line-height:1.45;letter-spacing:.04em;cursor:pointer;
+  transition:transform .12s ease,box-shadow .12s ease,background .12s;
+  animation:btnBreath 2.6s ease-in-out infinite;
+  position:relative;overflow:hidden;
+}
+#spinBtn::after{
+  content:'';position:absolute;top:13px;left:19px;
+  width:34px;height:13px;border-radius:50%;
+  background:rgba(255,255,255,.11);transform:rotate(-22deg);
+}
+@keyframes btnBreath{
+  0%,100%{box-shadow:0 0 18px rgba(201,162,39,.55),0 0 36px rgba(201,162,39,.22)}
+  50%    {box-shadow:0 0 30px rgba(201,162,39,1),0 0 58px rgba(201,162,39,.48),0 0 80px rgba(201,162,39,.14)}
+}
+#spinBtn:hover:not(:disabled){transform:scale(1.07)}
+#spinBtn:active:not(:disabled){transform:scale(.93);box-shadow:0 0 8px rgba(201,162,39,.3) inset}
+#spinBtn:disabled{cursor:not-allowed;opacity:.62;animation:none;
+  box-shadow:0 0 8px rgba(201,162,39,.25)}
+
+/* ═══════════════════ FOOTER ═══════════════════ */
+.footer-note{
+  margin-top:24px;font-size:.68rem;
+  letter-spacing:.2em;color:rgba(240,220,255,.18);
+}
+
+/* ═══════════════════ MODAL ═══════════════════ */
+#modalOverlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  align-items:center;justify-content:center;
+  background:rgba(0,0,0,.68);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+#modalOverlay.active{
+  display:flex;
+  animation:ovFadeIn .4s ease both;
+}
+@keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
+
+.modal-box{
+  position:relative;overflow:hidden;
+  background:linear-gradient(148deg,rgba(52,28,96,.97),rgba(18,8,42,.98));
+  border:1.5px solid rgba(201,162,39,.52);
+  border-radius:26px;
+  padding:44px 54px 40px;text-align:center;
+  max-width:460px;width:92%;
+  box-shadow:
+    0 0 55px rgba(201,162,39,.28),
+    0 0 110px rgba(201,162,39,.1),
+    inset 0 1px 0 rgba(255,255,255,.07);
+  animation:modalPop .58s cubic-bezier(.175,.885,.32,1.275) both;
+}
+@keyframes modalPop{
+  0%  {transform:scale(.2) rotate(-10deg);opacity:0}
+  65% {transform:scale(1.07) rotate(1.5deg)}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+
+.m-trophy{font-size:4rem;animation:trophyBounce .65s ease .1s both;display:block;margin-bottom:4px}
+@keyframes trophyBounce{
+  from{transform:scale(0) rotate(-28deg);opacity:0}
+  60% {transform:scale(1.28) rotate(7deg);opacity:1}
+  to  {transform:scale(1) rotate(0);opacity:1}
+}
+
+.m-title{
+  font-size:2.3rem;font-weight:900;letter-spacing:.12em;
+  background:linear-gradient(135deg,#fde97a,#c9a227,#f0d060);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:8px;
+}
+
+.m-stars{margin:6px 0}
+.m-stars span{
+  display:inline-block;color:var(--gold);font-size:1.35rem;
+  opacity:0;animation:starPop .3s ease forwards;
+}
+.m-stars span:nth-child(1){animation-delay:.42s}
+.m-stars span:nth-child(2){animation-delay:.58s}
+.m-stars span:nth-child(3){animation-delay:.74s}
+.m-stars span:nth-child(4){animation-delay:.58s}
+.m-stars span:nth-child(5){animation-delay:.42s}
+@keyframes starPop{
+  from{transform:scale(0) rotate(-35deg);opacity:0}
+  60% {transform:scale(1.45) rotate(9deg);opacity:1}
+  to  {transform:scale(1) rotate(0);opacity:1}
+}
+
+.m-hr{width:100%;height:1px;border:none;margin:14px 0;
+  background:linear-gradient(90deg,transparent,rgba(201,162,39,.55),transparent)}
+
+.m-prize{
+  font-size:1.8rem;font-weight:900;
+  color:var(--ivory);line-height:1.55;
+  letter-spacing:.06em;
+  text-shadow:0 0 28px rgba(240,224,192,.38);
+}
+
+.m-redeem{
+  margin-top:18px;font-size:.8rem;
+  color:rgba(201,162,39,.72);letter-spacing:.14em;
+  padding:12px 0 0;
+  border-top:1px solid rgba(201,162,39,.2);
+}
+
+.m-close{
+  display:inline-block;margin-top:28px;padding:12px 52px;
+  background:linear-gradient(135deg,#c9a227,#f0d060 50%,#b08018);
+  border:none;border-radius:32px;
+  color:#1a0a2e;font-size:.95rem;font-weight:800;
+  letter-spacing:.1em;cursor:pointer;
+  transition:transform .14s,box-shadow .14s;
+  box-shadow:0 4px 20px rgba(201,162,39,.38);
+}
+.m-close:hover{transform:translateY(-2px);box-shadow:0 6px 26px rgba(201,162,39,.6)}
+
+/* ═══════════════════ RESPONSIVE ═══════════════════ */
+@media(max-width:560px){
+  .wheel-section{transform:scale(.68);transform-origin:top center;margin-bottom:-158px}
+  .header{margin-bottom:10px}
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <header class="header">
+    <h1 class="title-main">FGL集团</h1>
+    <div class="title-bar"></div>
+    <p class="title-sub">尊贵会员专属 &nbsp;·&nbsp; 幸运大转盘</p>
+  </header>
+
+  <!-- WHEEL -->
+  <section class="wheel-section">
+    <div class="outer-glow-ring"></div>
+    <div class="wheel-container">
+      <div class="ptr-wrap">
+        <div class="ptr-triangle"></div>
+        <div class="ptr-base"></div>
+      </div>
+      <canvas id="wheelCanvas" width="500" height="500"></canvas>
+      <div class="btn-wrap">
+        <button id="spinBtn" onclick="startSpin()">开始<br>抽奖</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="footer-note">仅限内部活动 &nbsp;·&nbsp; 最终解释权归 FGL 集团所有</p>
+</div>
+
+<!-- MODAL -->
+<div id="modalOverlay">
+  <div class="modal-box" id="modalBox">
+    <span class="m-trophy">🏆</span>
+    <div class="m-title">恭喜中奖！</div>
+    <div class="m-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+    <hr class="m-hr">
+    <div class="m-prize">含大量酒水的晚餐一顿</div>
+    <hr class="m-hr">
+    <div class="m-redeem">📸 凭此截图兑换</div>
+    <button class="m-close" onclick="closeModal()">再抽一次</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SEGMENT DATA
+   Index 0 = guaranteed prize; pointer rests here when
+   rotation ≡ 0° (mod 360°).  We draw segment 0 centred
+   at the top so the math stays simple.
+   ═══════════════════════════════════════════════════ */
+const SEGS = [
+  // [0] ★ guaranteed prize
+  { lines:['含大量酒水','的晚餐一顿'], fill:['#d4a820','#a07010'], txt:'#1a0a2e', prize:true },
+  // [1]
+  { lines:['谢谢','参与'],             fill:['#1e1530','#100c1e'], txt:'#c9a227' },
+  // [2]
+  { lines:['体育生','原味白袜一双'],         fill:['#ece0c2','#d4c89a'], txt:'#2a1848' },
+  // [3]
+  { lines:['大黄鱼银趴','入场券一张'],             fill:['#2a1848','#1c1030'], txt:'#ece0c2' },
+  // [4]
+  { lines:['gay吧','畅饮'],           fill:['#c9a227','#9a7a18'], txt:'#1a0a2e' },
+  // [5]
+  { lines:['黑丝大黄鱼','一条'],             fill:['#1e1530','#100c1e'], txt:'#c9a227' },
+  // [6]
+  { lines:['生化摇摇杯','一个'],             fill:['#ece0c2','#d4c89a'], txt:'#2a1848' },
+  // [7]
+  { lines:['牛子精灵实现','你一个愿望'],             fill:['#2a1848','#1c1030'], txt:'#ece0c2' },
+];
+
+const N       = SEGS.length;          // 8
+const TWO_PI  = Math.PI * 2;
+const SEG_RAD = TWO_PI / N;           // radians per segment  (π/4 = 45°)
+const TARGET  = 0;                    // always land here
+
+const canvas = document.getElementById('wheelCanvas');
+const ctx    = canvas.getContext('2d');
+const CX = canvas.width  / 2;        // 250
+const CY = canvas.height / 2;        // 250
+const R  = 226;                       // outer radius
+const IR = 52;                        // inner hub radius
+
+/* cumulative rotation in DEGREES (grows with each spin, never resets) */
+let rotation = 0;
+let spinning  = false;
+let rafId     = null;
+
+/* ── draw ─────────────────────────────────────────── */
+function drawWheel(deg) {
+  const baseRad = deg * Math.PI / 180;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  /* gold rim */
+  const rimG = ctx.createLinearGradient(CX-R, CY-R, CX+R, CY+R);
+  rimG.addColorStop(0,   '#fde97a');
+  rimG.addColorStop(.3,  '#c9a227');
+  rimG.addColorStop(.65, '#8b6914');
+  rimG.addColorStop(1,   '#fde97a');
+  ctx.beginPath(); ctx.arc(CX, CY, R+11, 0, TWO_PI);
+  ctx.fillStyle = rimG; ctx.fill();
+
+  /* thin dark separator between rim and segments */
+  ctx.beginPath(); ctx.arc(CX, CY, R+3, 0, TWO_PI);
+  ctx.fillStyle = '#060210'; ctx.fill();
+
+  /* segments */
+  for (let i = 0; i < N; i++) {
+    const s   = SEGS[i];
+    /* centre segment i at the TOP when baseRad === 0 */
+    const a0  = baseRad + i * SEG_RAD - Math.PI / 2 - SEG_RAD / 2;
+    const a1  = a0 + SEG_RAD;
+    const mid = a0 + SEG_RAD / 2;
+
+    /* radial gradient fill */
+    const gx1 = CX + (IR + 18) * Math.cos(mid);
+    const gy1 = CY + (IR + 18) * Math.sin(mid);
+    const gx2 = CX + R * Math.cos(mid);
+    const gy2 = CY + R * Math.sin(mid);
+    const sg  = ctx.createLinearGradient(gx1, gy1, gx2, gy2);
+    sg.addColorStop(0, s.fill[0]);
+    sg.addColorStop(1, s.fill[1]);
+
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, a0, a1);
+    ctx.closePath();
+    ctx.fillStyle = sg; ctx.fill();
+
+    /* border line */
+    ctx.strokeStyle = 'rgba(201,162,39,.32)';
+    ctx.lineWidth = 1.5; ctx.stroke();
+
+    /* text */
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(mid);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = s.txt;
+    const tR  = R * 0.63;
+    const fsz = s.prize ? 13 : 14;
+    ctx.font = `${s.prize ? 'bold ' : ''}${fsz}px "PingFang SC","Microsoft YaHei",sans-serif`;
+    const lh  = 19;
+    s.lines.forEach((ln, li) => {
+      ctx.fillText(ln, tR, (li - (s.lines.length - 1) / 2) * lh);
+    });
+    /* subtle star accent on prize segment */
+    if (i === TARGET) {
+      ctx.fillStyle = 'rgba(26,10,46,.75)';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('★', tR * .28, 0);
+    }
+    ctx.restore();
+  }
+
+  /* decorative rim dots (rotate with wheel for polish) */
+  const dotN = N * 5;
+  for (let j = 0; j < dotN; j++) {
+    const da = baseRad + (j / dotN) * TWO_PI;
+    ctx.beginPath();
+    ctx.arc(CX + (R + 7) * Math.cos(da), CY + (R + 7) * Math.sin(da),
+            j % 5 === 0 ? 2.5 : 1.3, 0, TWO_PI);
+    ctx.fillStyle = j % 5 === 0 ? '#fde97a' : 'rgba(201,162,39,.38)';
+    ctx.fill();
+  }
+
+  /* hub gold ring */
+  const hubR = ctx.createLinearGradient(CX-IR, CY-IR, CX+IR, CY+IR);
+  hubR.addColorStop(0, '#fde97a'); hubR.addColorStop(.5, '#c9a227'); hubR.addColorStop(1, '#8b6914');
+  ctx.beginPath(); ctx.arc(CX, CY, IR+9, 0, TWO_PI);
+  ctx.fillStyle = hubR; ctx.fill();
+
+  /* hub dark fill */
+  ctx.beginPath(); ctx.arc(CX, CY, IR+3, 0, TWO_PI);
+  ctx.fillStyle = '#060210'; ctx.fill();
+
+  /* hub inner gloss */
+  const gloss = ctx.createRadialGradient(CX-12, CY-12, 2, CX, CY, IR+3);
+  gloss.addColorStop(0, 'rgba(255,255,255,.14)');
+  gloss.addColorStop(1, 'rgba(0,0,0,.35)');
+  ctx.beginPath(); ctx.arc(CX, CY, IR+3, 0, TWO_PI);
+  ctx.fillStyle = gloss; ctx.fill();
+}
+
+drawWheel(0); // initial paint
+
+/* ── animation ─────────────────────────────────────── */
+let animStart = null, animFrom = 0, animTo = 0, animDur = 0;
+
+/* quartic ease-out: fast start, very slow finish — realistic deceleration */
+function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+
+function onFrame(ts) {
+  if (!animStart) animStart = ts;
+  const t = Math.min((ts - animStart) / animDur, 1);
+  drawWheel(animFrom + (animTo - animFrom) * easeOutQuart(t));
+
+  if (t < 1) {
+    rafId = requestAnimationFrame(onFrame);
+  } else {
+    rotation = animTo;
+    drawWheel(rotation);
+    spinning = false;
+    const btn = document.getElementById('spinBtn');
+    btn.disabled = false;
+    btn.innerHTML = '开始<br>抽奖';
+    setTimeout(showModal, 380);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   CHEAT ALGORITHM
+   ──────────────────────────────────────────────────────
+   Segment 0 is drawn centred at the top (pointer position)
+   when rotation ≡ 0° (mod 360°).
+
+   To guarantee a win we must ensure:
+     finalRotation  mod 360  ∈  (-halfSeg + pad,  +halfSeg - pad)
+                             =  (-17.5°, +17.5°)
+
+   We do this by:
+     1. Computing toZero = how many degrees needed to snap
+        the current position back to 0° alignment.
+     2. Adding 5-9 full extra rotations (invisible "randomness").
+     3. Adding a small random offset within ±17.5° (varies
+        the exact stopping point inside segment 0 each time).
+   ══════════════════════════════════════════════════════ */
+function startSpin() {
+  if (spinning) return;
+  spinning = true;
+
+  const btn = document.getElementById('spinBtn');
+  btn.disabled = true;
+  btn.innerHTML = '转动<br>中…';
+
+  const halfSeg = (360 / N) / 2;                           // 22.5°
+  const pad     = 5;                                        // stay 5° from edge
+  // random landing offset within segment 0
+  const offset  = (Math.random() - 0.5) * 2 * (halfSeg - pad); // ±17.5°
+  // normalise current rotation to [0, 360)
+  const curNorm = ((rotation % 360) + 360) % 360;
+  // degrees to add to return to 0° aligned (shortest path forward)
+  const toZero  = curNorm < 0.001 ? 0 : (360 - curNorm);
+  // random extra full rotations: 5–9 × 360°
+  const extra   = (5 + Math.floor(Math.random() * 5)) * 360;
+
+  animFrom  = rotation;
+  animTo    = rotation + extra + toZero + offset;
+  animDur   = 5400 + Math.random() * 1800;  // 5.4 – 7.2 seconds
+  animStart = null;
+
+  rafId = requestAnimationFrame(onFrame);
+}
+
+/* ── modal ──────────────────────────────────────────── */
+function showModal() {
+  const ov = document.getElementById('modalOverlay');
+  ov.style.display = 'flex';
+  ov.offsetHeight; // force reflow before adding class
+  ov.classList.add('active');
+  launchFireworks();
+}
+
+function closeModal() {
+  const ov = document.getElementById('modalOverlay');
+  ov.classList.remove('active');
+  ov.style.display = 'none';
+}
+
+/* ── fireworks ──────────────────────────────────────── */
+function launchFireworks() {
+  const box    = document.getElementById('modalBox');
+  const colors = ['#fde97a','#c9a227','#f0e0c0','#ff80c8','#a78bfa','#60c8f0','#ff9966','#aaffa9'];
+
+  for (let wave = 0; wave < 5; wave++) {
+    setTimeout(() => {
+      const count = 18 + Math.floor(Math.random() * 8);
+      for (let p = 0; p < count; p++) {
+        const dot   = document.createElement('span');
+        const angle = (p / count) * Math.PI * 2 + Math.random() * .6;
+        const dist  = 65 + Math.random() * 100;
+        const size  = 3.5 + Math.random() * 6;
+        dot.style.cssText =
+          `position:absolute;` +
+          `width:${size}px;height:${size}px;border-radius:50%;` +
+          `background:${colors[p % colors.length]};` +
+          `top:${10 + Math.random() * 80}%;` +
+          `left:${10 + Math.random() * 80}%;` +
+          `pointer-events:none;` +
+          `--tx:${Math.cos(angle)*dist}px;` +
+          `--ty:${Math.sin(angle)*dist}px;` +
+          `animation:fwPop ${.65 + Math.random() * .55}s ease-out forwards;`;
+        box.appendChild(dot);
+        setTimeout(() => { if (dot.parentNode) dot.remove(); }, 1500);
+      }
+    }, wave * 260);
+  }
+}
+
+/* inject firework keyframe */
+document.head.insertAdjacentHTML('beforeend',`<style>
+@keyframes fwPop{
+  0%  {transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}
+}
+</style>`);
+</script>
+</body>
+</html>
